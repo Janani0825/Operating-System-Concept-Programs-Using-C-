@@ -1,0 +1,81 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/shm.h>
+#include <sys/wait.h>
+
+int main() {
+    int n, i;
+
+    printf("Enter number of elements: ");
+    scanf("%d", &n);
+
+    int chunk = n / 4;
+
+    int total_ints = n + 4;
+    int shmid = shmget(IPC_PRIVATE, total_ints * sizeof(int), IPC_CREAT | 0666);
+
+    int *shared_array = (int *)shmat(shmid, NULL, 0);
+
+    int *partial_sums = shared_array+4;
+
+    for(i = 0; i < 4; i++) {
+        partial_sums[i] = 0;
+    }
+
+    printf("Enter %d integers:\n", n);
+    for (i = 0; i < n; i++) {
+        scanf("%d", &shared_array[i]);
+    }
+
+    if (fork() == 0) {
+        int sum = 0;
+        for (i = 0; i < chunk; i++) {
+            sum += shared_array[i];
+        }
+        partial_sums[0] = sum;
+        exit(0);
+    }
+
+    if (fork() == 0) {
+        int sum = 0;
+        for (i = chunk; i < 2 * chunk; i++) {
+            sum += shared_array[i];
+        }
+        partial_sums[1] = sum;
+        exit(0);
+    }
+
+    if (fork() == 0) {
+        int sum = 0;
+        for (i = 2 * chunk; i < 3 * chunk; i++) {
+            sum += shared_array[i];
+        }
+        partial_sums[2] = sum;
+        exit(0);
+    }
+
+    if (fork() == 0) {
+        int sum = 0;
+        for (i = 3 * chunk; i < n; i++) {
+            sum += shared_array[i];
+        }
+        partial_sums[3] = sum;
+        wait(NULL);
+        printf("\n--- Results printed by P4 ---\n");
+        printf("P1 Sum: %d\n", partial_sums[0]);
+        printf("P2 Sum: %d\n", partial_sums[1]);
+        printf("P3 Sum: %d\n", partial_sums[2]);
+        printf("P4 Sum: %d\n", partial_sums[3]);
+
+        int grand_total = partial_sums[0] + partial_sums[1] + partial_sums[2] + partial_sums[3];
+        printf("Grand Total Sum: %d\n", grand_total);
+        exit(0);
+    }
+    wait(NULL);
+
+    shmdt(shared_array);
+    shmctl(shmid, IPC_RMID, NULL);
+
+    return 0;
+}
