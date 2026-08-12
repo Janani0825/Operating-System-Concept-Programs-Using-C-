@@ -1,1 +1,1 @@
-# Operating-System-Concept-Programs-Using-C-
+# OPERATING SYSTEM CONCEPT PROGRAMS USING C
