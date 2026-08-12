@@ -1,0 +1,36 @@
+#include<stdio.h>
+#include<sys/types.h>
+#include<unistd.h>
+int main()
+{
+   int p1=fork();
+   if(p1>0){
+      int p3=fork();
+      if(p3>0){
+         int pid1=getpid();
+         int ppid1=getppid();
+         printf("pid1:%d  ppid1:%d\n",pid1,ppid1);
+
+   }
+      else{
+         int pid3=getpid();
+         int ppid3=getppid();
+         printf("pid3:%d  ppid3:%d\n",pid3,ppid3);
+      }
+   }
+   else{
+      int p4=fork();
+      if(p4>0){
+
+      int pid2=getpid();
+      int ppid2=getppid();
+      printf("pid2:%d  ppid2:%d\n",pid2,ppid2);
+   }
+      else{
+         int pid4=getpid();
+         int ppid4=getppid();
+         printf("pid4:%d ppid4:%d \n",pid4,ppid4);
+      }
+   }
+   return 0;
+}
