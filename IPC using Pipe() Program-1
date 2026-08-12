@@ -1,0 +1,83 @@
+#include<stdio.h>
+#include<unistd.h>
+#include<sys/wait.h>
+
+int main(){
+   int is_prime, fd1[2], fd2[2], n, i, j, k, elm, k1, k2;
+   k1 = pipe(fd1);
+   int p1 = fork();
+
+   if(k1 == 0) {
+      if(p1 > 0) {
+
+         close(fd1[0]);
+         printf("enter the number of elements: ");
+         scanf("%d", &n);
+
+         write(fd1[1], &n, sizeof(n));
+         for(i = 0; i < n; i++) {
+            scanf("%d", &elm);
+            write(fd1[1], &elm, sizeof(elm));
+         }
+         close(fd1[1]);
+         wait(NULL);
+      }
+      else {
+
+         k2 = pipe(fd2);
+         if(k2 == 0) {
+            int p2 = fork();
+            if (p2 > 0) {
+                wait(NULL);
+
+               close(fd2[1]);
+
+
+               while(read(fd2[0], &elm, sizeof(elm)) > 0) {
+                  is_prime = 1;
+                  if(elm <= 1) {
+                     is_prime = 0;
+                  } else {
+                     for(j = 2; j < elm; j++) {
+                        if(elm % j == 0) {
+                           is_prime = 0;
+                           break;
+                        }
+                     }
+                  }
+
+                  if(is_prime == 1) {
+                     printf("prime no: %d\n", elm);
+                  }
+               }
+               close(fd2[0]);
+               wait(NULL);
+            }
+            else {
+
+               close(fd1[1]);
+               close(fd2[0]);
+
+               read(fd1[0], &n, sizeof(n));
+               for(k = 0; k < n; k++) {
+                  read(fd1[0], &elm, sizeof(elm));
+
+
+                  if(elm % 2 != 0) {
+                     write(fd2[1], &elm, sizeof(elm));
+                  }
+               }
+               close(fd1[0]);
+               close(fd2[1]);
+            }
+         }
+         else {
+            printf("pipe2 failed");
+         }
+      }
+   }
+   else {
+      printf("pipe 1 failed");
+   }
+   return 0;
+}
