@@ -1,0 +1,52 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/shm.h>
+#include <sys/wait.h>
+
+int main() {
+    int n, i, j, is_prime;
+
+    printf("Enter number of elements: ");
+    scanf("%d", &n);
+    int shmid = shmget(IPC_PRIVATE, n * sizeof(int), IPC_CREAT | 0666);
+    int *shared_array = (int *)shmat(shmid, NULL, 0);
+
+    if (fork() == 0) {
+        printf("Enter %d integers:\n", n);
+        for (i = 0; i < n; i++) {
+            scanf("%d", &shared_array[i]);
+        }
+        exit(0);
+    }
+    else {
+
+        wait(NULL);
+
+        int prime_count = 0;
+        for (i = 0; i < n; i++) {
+            int num = shared_array[i];
+            if (num <= 1) {
+                is_prime = 0;
+            } else {
+                is_prime = 1;
+                for (j = 2; j * j <= num; j++) {
+                    if (num % j == 0) {
+                        is_prime = 0;
+                        break;
+                    }
+                }
+            }
+
+            if (is_prime == 1) {
+                prime_count++;
+            }
+        }
+
+        printf("Total prime numbers: %d\n", prime_count);
+        shmdt(shared_array);
+        shmctl(shmid, IPC_RMID, NULL);
+    }
+
+    return 0;
+}
