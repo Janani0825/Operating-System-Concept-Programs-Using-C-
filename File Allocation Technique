@@ -1,0 +1,222 @@
+#include <stdio.h>
+#include <string.h>
+#define MAX 50
+struct Directory
+{
+    char filename[20];
+    int start;
+    int blocks;
+};
+struct Directory dir[MAX];
+int bitVector[MAX];
+int disk[MAX];
+int n, fileCount = 0;
+void addFile()
+{
+    char name[20];
+    int blocks, start = -1;
+    int i, j, found;
+
+    if (fileCount == MAX)
+    {
+        printf("Directory is full!\n");
+        return;
+    }
+
+    printf("Enter file name: ");
+    scanf("%19s", name);
+
+    for (i = 0; i < fileCount; i++)
+    {
+        if (strcmp(dir[i].filename, name) == 0)
+        {
+            printf("File already exists!\n");
+            return;
+        }
+    }
+
+    printf("Enter number of blocks: ");
+    scanf("%d", &blocks);
+
+    if (blocks <= 0 || blocks > n)
+    {
+        printf("Invalid number of blocks!\n");
+        return;
+    }
+    for (i = 0; i <= n - blocks; i++)
+    {
+        found = 1;
+
+        for (j = i; j < i + blocks; j++)
+        {
+            if (bitVector[j] == 1)
+            {
+                found = 0;
+                break;
+            }
+        }
+
+        if (found == 1)
+        {
+            start = i;
+            break;
+        }
+    }
+
+    if (start == -1)
+    {
+        printf("File allocation failed: insufficient contiguous space!\n");
+        return;
+    }
+
+    strcpy(dir[fileCount].filename, name);
+    dir[fileCount].start = start;
+    dir[fileCount].blocks = blocks;
+
+    for (i = start; i < start + blocks; i++)
+    {
+        bitVector[i] = 1;
+        disk[i] = 1;
+    }
+
+    fileCount++;
+
+    printf("File allocated successfully!\n");
+    printf("Starting block: %d\n", start);
+}
+
+void deleteFile()
+{
+    char name[20];
+    int i, j, start, blocks;
+
+    printf("Enter file name to delete: ");
+    scanf("%19s", name);
+
+    for (i = 0; i < fileCount; i++)
+    {
+        if (strcmp(dir[i].filename, name) == 0)
+        {
+            start = dir[i].start;
+            blocks = dir[i].blocks;
+
+            for (j = start; j < start + blocks; j++)
+            {
+                bitVector[j] = 0;
+                disk[j] = 0;
+            }
+
+            for (j = i; j < fileCount - 1; j++)
+                dir[j] = dir[j + 1];
+
+            fileCount--;
+
+            printf("File deleted successfully!\n");
+            return;
+        }
+    }
+
+    printf("File not found!\n");
+}
+
+void display()
+{
+    int i;
+
+    printf("\n========== DIRECTORY ==========\n");
+    printf("File Name\tStart\tBlocks\n");
+
+    for (i = 0; i < fileCount; i++)
+    {
+        printf("%s\t\t%d\t%d\n",
+               dir[i].filename,
+               dir[i].start,
+               dir[i].blocks);
+    }
+
+    if (fileCount == 0)
+        printf("No files in directory.\n");
+
+    printf("\n========== BIT VECTOR ==========\n");
+    printf("Block : ");
+
+    for (i = 0; i < n; i++)
+        printf("%d ", i);
+
+    printf("\nStatus: ");
+
+    for (i = 0; i < n; i++)
+        printf("%d ", bitVector[i]);
+
+    printf("\n\n========== 1D DISK BLOCK ARRAY ==========\n");
+
+    for (i = 0; i < n; i++)
+        printf("Block %d : %d\n", i, disk[i]);
+}
+
+int main()
+{
+    int i, choice;
+
+    printf("Enter number of disk blocks: ");
+    scanf("%d", &n);
+
+    if (n <= 0 || n > MAX)
+    {
+        printf("Invalid disk size!\n");
+        return 0;
+    }
+
+    printf("\nEnter block status (0 = Free, 1 = Allocated):\n");
+
+    for (i = 0; i < n; i++)
+    {
+        do
+        {
+            printf("Block %d: ", i);
+            scanf("%d", &bitVector[i]);
+
+            if (bitVector[i] != 0 && bitVector[i] != 1)
+                printf("Enter only 0 or 1.\n");
+
+        } while (bitVector[i] != 0 && bitVector[i] != 1);
+
+        disk[i] = bitVector[i];
+    }
+
+    do
+    {
+        printf("\n===== CONTIGUOUS FILE ALLOCATION =====\n");
+        printf("1. Add File\n");
+        printf("2. Delete File\n");
+        printf("3. Display\n");
+        printf("4. Exit\n");
+        printf("Enter your choice: ");
+        scanf("%d", &choice);
+
+        switch (choice)
+        {
+            case 1:
+                addFile();
+                break;
+
+            case 2:
+                deleteFile();
+                break;
+
+            case 3:
+                display();
+                break;
+
+            case 4:
+                printf("Exiting program.\n");
+                break;
+
+            default:
+                printf("Invalid choice!\n");
+        }
+
+    } while (choice != 4);
+
+    return 0;
+}
