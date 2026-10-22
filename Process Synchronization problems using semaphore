@@ -1,0 +1,80 @@
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+#include <sys/ipc.h>
+#include <sys/shm.h>
+#include <sys/sem.h>
+#include <sys/wait.h>
+#define MUTEX 0
+#define EMPTY 1
+#define FULL  2
+union semun {
+    int val;
+};
+void sem_op(int semid, int sem_num, int op_val) {
+    struct sembuf s;
+    s.sem_num = sem_num;
+    s.sem_op = op_val;
+    s.sem_flg = 0;
+    semop(semid, &s, 1);
+}
+int main() {
+    int n, i, j;
+    printf("Enter number of integers:\n");
+    if (scanf("%d", &n) != 1 || n <= 0) return 1;
+    int shmid = shmget(IPC_PRIVATE, n * sizeof(int), IPC_CREAT | 0666);
+    int *buffer = (int *)shmat(shmid, NULL, 0);
+    int semid = semget(IPC_PRIVATE, 3, IPC_CREAT | 0666);
+    union semun u;
+    u.val = 1; semctl(semid, MUTEX, SETVAL, u);
+    u.val = 1; semctl(semid, EMPTY, SETVAL, u);
+    u.val = 0; semctl(semid, FULL, SETVAL, u);
+    pid_t pid = fork();
+    if (pid == 0) {
+        sem_op(semid, FULL, -1);
+        for (i = 0; i < n; i++) {
+            sem_op(semid, MUTEX, -1);
+            int num = buffer[i];
+            sem_op(semid, MUTEX, 1);
+            int is_prime = 1;
+            if (num <= 1) {
+                is_prime = 0;
+            } else {
+                for (j = 2; j * j <= num; j++) {
+                    if (num % j == 0) {
+                        is_prime = 0;
+                        break;
+                    }
+                }
+            }
+
+            if (is_prime == 1) {
+                printf("[Consumer] %d is PRIME\n", num);
+            } else {
+                printf("[Consumer] %d is NOT PRIME\n", num);
+            }
+        }
+        sem_op(semid, EMPTY, 1);
+        exit(0);
+    }
+    else {
+        sem_op(semid, EMPTY, -1);
+        for (i = 0; i < n; i++) {
+            int num;
+            printf("[Producer] Enter number %d:\n", i + 1);
+            if (scanf("%d", &num) != 1) break;
+
+            sem_op(semid, MUTEX, -1);
+            buffer[i] = num;
+            sem_op(semid, MUTEX, 1);
+        }
+        sem_op(semid, FULL, 1);
+        wait(NULL);
+        shmdt(buffer);
+        shmctl(shmid, IPC_RMID, NULL);
+        semctl(semid, 0, IPC_RMID);
+        printf("Program finished successfully.\n");
+    }
+
+    return 0;
+}
