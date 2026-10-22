@@ -1,0 +1,133 @@
+#include <stdio.h>
+#define FRAMES 10
+#define HASH_SIZE 10
+struct InvertedPageTable {
+    int pid;
+    int page;
+    int frame;
+    int valid;
+};
+struct InvertedPageTable ipt[FRAMES];
+int freeFrame[FRAMES];
+int hashTable[HASH_SIZE];
+int hash(int pid, int page)
+{
+    return (pid + page) % HASH_SIZE;
+}
+void initialize()
+{
+    int i;
+
+    for (i = 0; i < FRAMES; i++) {
+        ipt[i].valid = 0;
+        freeFrame[i] = 1;
+    }
+
+    for (i = 0; i < HASH_SIZE; i++)
+        hashTable[i] = -1;
+}
+void addProcess(int pid, int memory, int pageSize)
+{
+    int pages;
+    int i, frame, h;
+    pages = (memory + pageSize - 1) / pageSize;
+    printf("\nProcess %d needs %d pages\n", pid, pages);
+    for (i = 0; i < pages; i++) {
+        for (frame = 0; frame < FRAMES; frame++) {
+            if (freeFrame[frame] == 1)
+                break;
+        }
+        if (frame == FRAMES) {
+            printf("Not enough free frames!\n");
+            return;
+        }
+        ipt[frame].pid = pid;
+        ipt[frame].page = i;
+        ipt[frame].frame = frame;
+        ipt[frame].valid = 1;
+        h = hash(pid, i);
+        hashTable[h] = frame;
+        freeFrame[frame] = 0;
+        printf("Page %d -> Frame %d\n", i, frame);
+    }
+}
+
+void deleteProcess(int pid)
+{
+    int i, h;
+    printf("\nDeleting Process %d\n", pid);
+    for (i = 0; i < FRAMES; i++) {
+        if (ipt[i].valid && ipt[i].pid == pid) {
+            h = hash(ipt[i].pid, ipt[i].page);
+            hashTable[h] = -1;
+            printf("Page %d -> Frame %d freed\n",
+                   ipt[i].page, ipt[i].frame);
+            freeFrame[i] = 1;
+            ipt[i].valid = 0;
+        }
+    }
+}
+
+void displayIPT()
+{
+    int i;
+
+    printf("\n--- Inverted Page Table ---\n");
+    printf("Frame\tPID\tPage\tValid\n");
+
+    for (i = 0; i < FRAMES; i++) {
+
+        if (ipt[i].valid)
+            printf("%d\t%d\t%d\tYes\n",
+                   i, ipt[i].pid, ipt[i].page);
+        else
+            printf("%d\t-\t-\tNo\n", i);
+    }
+}
+
+void displayFreeFrames()
+{
+    int i;
+
+    printf("\n--- Free Frame List ---\n");
+
+    for (i = 0; i < FRAMES; i++) {
+        if (freeFrame[i])
+            printf("%d ", i);
+    }
+
+    printf("\n");
+}
+
+int main()
+{
+    int pageSize;
+    int n;
+    int i;
+    int pid;
+    int memory;
+    int deletePid;
+    initialize();
+    printf("Enter page size: ");
+    scanf("%d", &pageSize);
+    printf("Enter number of processes to add: ");
+    scanf("%d", &n);
+    for (i = 0; i < n; i++) {
+
+        printf("\nEnter Process ID: ");
+        scanf("%d", &pid);
+
+        printf("Enter memory size: ");
+        scanf("%d", &memory);
+
+        addProcess(pid, memory, pageSize);
+    }
+    displayIPT();
+    displayFreeFrames();
+    printf("\nEnter Process ID to delete: ");
+    scanf("%d", &deletePid);
+    deleteProcess(deletePid);
+    displayIPT();
+    displayFreeFrames();
+    return 0;
+}
